@@ -7,4 +7,4 @@ edition = "2021"
 
 [dependencies]
 futures = "0.3"
-async_runtime = { path = "../async_runtime" }
+async_runtime = { path = "../runtime" }

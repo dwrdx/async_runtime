@@ -1,3 +1,8 @@
+# What is this
+
+This is a fork of [async_runtime](https://github.com/TheShepord/async_runtime) for reading purposes, it contains the note while I'm reading the source code.
+Search "Edward NOTE" for all the notes I've taken.
+
 # Async Runtime
 
 ## 1 Introduction

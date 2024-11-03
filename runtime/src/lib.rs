@@ -3,6 +3,10 @@ mod epoll {
     use std::io;
 
     // Module providing unsafe ffi for Linux's epoll and epoll-adjacent syscalls.
+
+    // [Edward NOTE]: 
+    // - This ffi module exposes epoll(from libc library) APIs to rust functions.
+    // - ffi module is a sub-module of epoll module.
     mod ffi {
         #[link(name = "c")]
         extern "C" {
@@ -11,7 +15,8 @@ mod epoll {
             // https://man7.org/linux/man-pages/man2/close.2.html
             pub fn close(fd: i32) -> i32;
             // https://man7.org/linux/man-pages/man2/epoll_ctl.2.html
-            pub fn epoll_ctl(epfd: i32, op: i32, fd: i32, event: *mut super::Event) -> i32;
+            // [Edward NOTE]: `*mut super::Event` is a pointer to Event struct which is defined in epoll module, super refers to parent module.
+            pub fn epoll_ctl(epfd: i32, op: i32, fd: i32, event: *mut super::Event) -> i32; 
             // https://man7.org/linux/man-pages/man2/epoll_wait.2.html
             pub fn epoll_wait(
                 epfd: i32,
@@ -22,10 +27,16 @@ mod epoll {
         }
     }
 
+    // [Edward NOTE]:
+    // - These functions is a wrapper around the epoll APIs.
+
     pub fn create() -> io::Result<i32> {
         // As of Linux 2.6.8, the size argument is ignored but has to be >= 0.
         let res = unsafe { ffi::epoll_create(1) };
         if res < 0 {
+            // [Edward NOTE]:
+            // io::Error::last_os_error() returns the last OS error that occurred. In this case, it returns the error that epoll_create returned.
+            // This should be called immediately after a call to a platform function,
             Err(io::Error::last_os_error())
         } else {
             Ok(res)
@@ -51,6 +62,8 @@ mod epoll {
     }
 
     pub fn wait(epfd: i32, events: &mut [Event], maxevents: i32, timeout: i32) -> io::Result<i32> {
+        // [Edward NOTE]:
+        // - as_mut_ptr() returns a pointer to the underlying array, this is an unsafe function.
         let res = unsafe { ffi::epoll_wait(epfd, events.as_mut_ptr(), maxevents, timeout) };
         if res < 0 {
             Err(io::Error::last_os_error())
@@ -59,6 +72,12 @@ mod epoll {
         }
     }
 
+    // [Edward NOTE]:
+    // This is the rust structure that maps to the C representation of `epoll_event`.
+    // https://man7.org/linux/man-pages/man3/epoll_event.3type.html
+    // usize is platform-dependent.
+    // repr(C)：指示该结构体应具有与 C 语言相同的内存布局，这样可以确保 Rust 和 C 代码之间的数据结构是兼容的。这在与 C 语言交互时非常重要。
+    // packed：指定结构体的字节对齐方式为“紧凑”，这意味着字段将按最小的内存对齐方式排列，从而减少内存使用，但可能会导致在某些架构上降低访问速度（由于可能的不对齐访问）。
     #[derive(Debug, Clone, Copy)] // Helpful default traits.
     #[repr(C, packed)] // packed struct used in C, so make sure to specify.
     pub struct Event {
@@ -66,6 +85,8 @@ mod epoll {
         token: usize,
     }
 
+    // [Edward NOTE]:
+    // - This is the default constructor.
     impl Event {
         pub fn new(events: i32, token: usize) -> Self {
             Event {
